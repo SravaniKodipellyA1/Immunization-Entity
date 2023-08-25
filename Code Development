@@ -1,0 +1,46 @@
+SELECT distinct top 10
+ Vac.ContextID, Vac.OrganizationID AS NetworkID, Vac.CenterID,
+ CAST ('Athena' AS VARCHAR (255)) AS SourceSystemID, Vac.PatientVaccineID AS ImmunizationID,Vac.PatientID, Doc.ClinicalEncounterID,
+ ---NULL AS PerformingProviderBusinessKey, NULL AS PerformingProviderNaturalBusinessKey, 
+--- NULL AS PerformingProviderID, NULL AS PerformingProviderFullNM,
+CASE WHEN cli.AdministerFLG IS NOT NULL THEN cli.AdministerFLG
+  WHEN Vac.RefusedDTS IS NULL THEN 'Y' ELSE 'N' end as 
+SrcStatusCD,
+ Vac.RefusedNoteTXT AS StatusReasonTXT,
+ Vac.RefusedReasonDSC AS ReasonNotAdministeredCD,
+ CAST('CVX' AS VARCHAR(255)) AS SrcCodeSystemNM,
+ Vac.CVXCD AS SrcImmunizationCD,
+ Vac.VaccineNM AS SrcImmunizationDSC,
+ CAST('CVX' AS NVARCHAR(255)) AS CodeSystemNM,
+ Vac.CVXCD AS ImmunizationCD,
+ Vac.VaccineNM AS ImmunizationDSC,
+ CVX.CVXVaccineGroupCD AS ImmunizationFamilyCD,
+ CVX.CVXVaccineGroupShortDSC AS ImmunizationFamilyNM,
+ Doc.ProviderNoteTXT AS NoteTXT,
+ Vac.LotNBR as LotNBR,
+ Vac.VaccineManufacturerNM AS ManufacturerCD,
+ FIR.EVDMVXCDDSC AS ManufacturerNM,
+-- NULL AS ManufacturerCodeTXT,
+ COALESCE(Vac.AdministeredDTS, Vac.VaccineInformationGivenDTS) AS AdministeredDTS,
+ Vac.CreatedDTS AS RecordedDTS,
+ CLI.ClinicalVaccineSiteID AS SrcSiteCD,
+ COALESCE(Vac.VaccineRouteCD, Doc.VaccineRouteCD) AS SrcRouteCD,
+ --NULL AS SrcRouteDSC,
+ Vac.QuantityAMT AS DoseAMT,
+ Vac.DisplayQuantityUnitsCD AS DoseUnitCD,
+-- NULL AS DoseNBR,
+ Doc.HistoricalFLG,
+ Vac.LastUpdatedDTS AS SourceUpdateDTS,
+ Vac.EDWLastModifiedDTS AS LastUpdatedInSourceMartDTS,
+ GETDATE() AS LastUpdatedinSAMDTS,
+ GETDATE() AS ImmunizationLastLoadDTS
+FROM [AthenaHI].[Patient].[Vaccine] Vac
+Inner JOIN [AthenaHI].[Person].[Patient] Pat on Vac.CenterID = Pat.CenterID and Pat.OrganizationID= Vac.OrganizationID and Vac.PatientID=Vac.PatientID
+Inner Join [AthenaHI].[Clinical].[VaccineBASE] CLI on pat.CenterID=CLI.CenterID and pat.OrganizationID=CLI.OrganizationID
+Left Join [SAM].[ReferenceTable].[CDCReferenceHL7StandardCodeSetMappingCVXtoVaccineGroups] CVX on CVX.CVXCD=vac.CVXCD
+Inner Join [AthenaHI].[Reference].[FirstDatabankREVDMVX0] FIR on vac.VaccineManufacturerNM = FIR.EVDMVXCD and  FIR.CenterID= Vac.CenterID and FIR.OrganizationID = Vac.OrganizationID
+--LEFT JOIN [AthenaHI].[Clinical].[Encounter] Enc on Enc.CenterID = Pat.CenterID and Enc.DocumentID=Pat.DocumentID
+Inner JOIN [AthenaHI].[Clinical].[Document] Doc ON Vac.CenterID = Doc.CenterID and Doc.OrganizationID= Vac.OrganizationID AND Vac.DocumentID = Doc.DocumentID
+  
+
+
